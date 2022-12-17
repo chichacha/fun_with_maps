@@ -151,8 +151,119 @@ draw_map(75) +
   
   
 
+france_sf_area3 <- france_sf %>%
+  group_by(area_3) %>%
+  arrange(desc(POP2010)) %>%
+  summarise(zip_count=n(), 
+            area_2_count=n_distinct(area_2),
+            pop = sum(POP2010),
+            city_example=first(LIB),
+            dep_list=paste(unique(DEP),collapse=" & "),
+            do_union=T)
+
+
+
+france_sf_area2 <- france_sf %>%
+  group_by(area_2) %>%
+  arrange(desc(POP2010)) %>%
+  summarise(zip_count=n(), 
+            area_3_count=n_distinct(area_3),
+            pop = sum(POP2010),
+            city_example=first(LIB),
+            dep_list=paste(unique(DEP),collapse=" & "),
+            do_union=T)
 
 
 
 
 
+
+france_sf_area2 %>%
+  ggplot() +
+  geom_sf(aes(fill=pop),color="#ffffff90", size=0.1) +
+  scale_fill_viridis_c(option="viridis", trans="log1p", labels=scales::comma) +
+  theme_map() +
+  france_sf_area3 %>%
+  ggplot() +
+  geom_sf(aes(fill=pop),color="#ffffff90", size=0.1) +
+  scale_fill_viridis_c(option="viridis", trans="log1p", labels=scales::comma) +
+  theme_map() +
+  france_sf %>%
+  ggplot() +
+  geom_sf(aes(fill=POP2010),color="#ffffff90", size=0.1) +
+  scale_fill_viridis_c(option="viridis", trans="log1p", labels=scales::comma) +
+  theme_map()
+
+ggsave("output/france_postal_codes_compare.png", width=16, height=9)
+
+
+france_sf_area3 %>%
+  ggplot() +
+  geom_sf(aes(fill=zip_count),color="#ffffff90", size=0.1) +
+  scale_fill_viridis_c(option="viridis",  labels=scales::comma, trans="sqrt") +
+  #geom_sf_text(aes(label=zip_count), family="Roboto Condensed") +
+  theme_map() 
+
+ggsave("output/france_department_3_zipcode_counts.png", width=16, height=9)
+
+france_sf_area2 %>%
+  ggplot() +
+  geom_sf(aes(fill=zip_count),color="#ffffff90", size=0.1) +
+  scale_fill_viridis_c(option="viridis",  labels=scales::comma) +
+  geom_sf_text(aes(label=area_2), family="Roboto Condensed") +
+  theme_map() 
+
+ggsave("output/france_department_zipcode_counts.png", width=16, height=9)
+
+france_sf_area2 %>%
+  ungroup() %>%
+  arrange(-zip_count)
+  
+
+ggsave("output/france_postal_codes_compare.png", width=16, height=9)
+
+
+france_sf_area2 %>%
+  ggplot() +
+  geom_sf(aes(fill=pop),color="#ffffff90", size=0.1) +
+  scale_fill_viridis_c(option="G", trans="log10")
+
+
+france_sf_LIB <-france_sf %>% group_by(LIB) %>%
+  summarise(zip_count=n()) %>%
+  filter(zip_count>1)
+
+france_sf_LIB %>%
+  as_tibble() %>%
+  arrange(-zip_count)
+
+france_sf_LIB %>%
+  ggplot() +
+  geom_sf(aes(fill=factor(zip_count)), color="#ffffff00")+
+  geom_sf_text(aes(label=LIB, size=sqrt(zip_count)), family="Roboto Condensed", hjust="outward",
+               data=. %>% filter(zip_count>2)) +
+  scale_fill_material_d() +
+  theme_map(base_family="Roboto Condensed") +
+  scale_size_continuous(range=c(4,8), guide="none")
+
+ggsave("output/france_LIB_multipe_zips.png", width=16, height=9)
+
+france_sf %>% filter(str_detect(ID,"^(130)") & str_detect(LIB,"Marseille")) %>%
+  ggplot() +
+  geom_sf() +
+  geom_sf_text(aes(label=str_remove(LIB,"Marseille-")), family="Roboto Condensed") +
+  theme_map() +
+  labs(title="Marseille")
+
+
+library(rmapshaper)
+library(geojsonio)
+library(geojsonsf)
+
+france_dept_geojson <-france_sf_area2 %>% sf_geojson()
+head(france_dept_geojson)
+
+france_dept_geojson %>% geojson_write(file="output/france_dept_area2.geojson")
+
+france_dept_geojson2 <- france_sf_area3 %>% sf_geojson()
+france_dept_geojson2 %>% geojson_write(file="output/france_postal3.geojson")
